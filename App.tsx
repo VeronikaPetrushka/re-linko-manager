@@ -1,28 +1,43 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { JSX } from 'react';
+import { enableScreens } from 'react-native-screens';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
+import { ReloaderLinkoF, RemylinksLinkoF, RenewlinkLinkoF } from './Management/ReConst/reLinkoWrapper';
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+export type RootStackParamList = {
+    ReloaderLinkoF: undefined;
+    RemylinksLinkoF: undefined;
+    RenewlinkLinkoF: undefined;
+};
+
+enableScreens();
+
+const Stack = createStackNavigator<RootStackParamList>();
+
+function App(): JSX.Element {
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <NewAppScreen templateFileName="App.tsx" />
-    </View>
+      <NavigationContainer>
+            <Stack.Navigator
+                initialRouteName="ReloaderLinkoF"
+                screenOptions={{ headerShown: false }}
+            >
+                <Stack.Screen
+                    name="ReloaderLinkoF"
+                    component={ReloaderLinkoF}
+                />
+                <Stack.Screen
+                    name="RemylinksLinkoF"
+                    component={RemylinksLinkoF}
+                />
+                <Stack.Screen
+                    name="RenewlinkLinkoF"
+                    component={RenewlinkLinkoF}
+                />
+            </Stack.Navigator>
+      </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
 
 export default App;
