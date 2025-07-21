@@ -4,7 +4,7 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m1
     integrations:
-      app_store_connect: Re Linko Manager API key
+      app_store_connect: ReLinko Manager API key
     environment:
       ios_signing:
         distribution_type: app_store
