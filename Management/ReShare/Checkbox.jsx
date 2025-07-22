@@ -7,10 +7,11 @@ const Checkbox = ({ checked, onChange }) => {
 
     useEffect(() => {
         if (webViewRef.current) {
-            webViewRef.current.injectJavaScript(`
+            const script = `
                 setChecked(${checked});
                 true;
-            `);
+            `;
+            webViewRef.current.injectJavaScript(script);
         }
     }, [checked]);
 
@@ -43,8 +44,10 @@ const Checkbox = ({ checked, onChange }) => {
             javaScriptEnabled={true}
             domStorageEnabled={true}
             originWhitelist={['*']}
-            mixedContentMode="always"
+            mixedContentMode="compatibility"
             scrollEnabled={false}
+            onError={(error) => console.error('WebView error:', error)}
+            onHttpError={(error) => console.error('WebView HTTP error:', error)}
         />
     );
 };

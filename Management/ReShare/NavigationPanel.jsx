@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Image, TouchableOpacity } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import reLinkoNav from "../ReConst/reLinkoNav";
+import { panel } from '../../assets/styles';
 
 const NavigationPanel = () => {
     const navigation = useNavigation();
@@ -15,19 +16,17 @@ const NavigationPanel = () => {
     };
 
     return (
-        <View>
+        <View style={panel.container}>
             {reLinkoNav.map((nav, idx) => (
                 <TouchableOpacity 
                     key={idx}
-                    onPress={() => handleNavigation(nav.screenName)}
-                    style={[
-                        currentScreen === nav.screenName && styles.activeNavItem
-                    ]}
+                    onPress={() => handleNavigation(nav.dis)}
                 >
                     <Image 
                         source={nav.image} 
                         style={[
-                            currentScreen === nav.screenName && styles.activeNavIcon
+                            panel.image,
+                            currentScreen === nav.dis && {tintColor: '#FF1464'}
                         ]} 
                     />
                 </TouchableOpacity>

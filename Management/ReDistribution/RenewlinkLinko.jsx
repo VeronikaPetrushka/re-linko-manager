@@ -16,9 +16,10 @@ import {
   UIManager
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { logo, returnArr } from "../ReConst/reLinkoDecor";
+import { checked, logo, returnArr } from "../ReConst/reLinkoDecor";
 import reLinkoTags from "../ReConst/reLinkoTags";
 import Checkbox from '../ReShare/Checkbox';
+import { form, modal, shared } from '../../assets/styles';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -30,6 +31,8 @@ const RenewlinkLinko = () => {
     const [description, setDescription] = useState('');
     const [tags, setTags] = useState([]);
     const [tagsSelectionListVisible, setTagsSelectionListVisible] = useState(false);
+
+    const [customTags, setCustomTags] = useState(null);
     
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideUpAnim = useRef(new Animated.Value(30)).current;
@@ -37,6 +40,26 @@ const RenewlinkLinko = () => {
     const modalSlide = useRef(new Animated.Value(300)).current;
     const tagItemOpacity = useRef(new Animated.Value(0)).current;
     const tagItemScale = useRef(new Animated.Value(0.8)).current;
+
+    useEffect(() => {
+        const loadTags = async () => {
+            try {
+                const storedTags = await AsyncStorage.getItem('CUSTOM_TAGS');
+                if (storedTags !== null) {
+                    const parsed = JSON.parse(storedTags);
+                    setCustomTags(Array.isArray(parsed) ? parsed : []);
+                } else {
+                    setCustomTags(null);
+                }
+            } catch (err) {
+                console.error("Failed to load custom tags", err);
+                setCustomTags(null);
+            }
+        };
+        loadTags();
+    }, []);
+
+    const effectiveTags = customTags === null ? reLinkoTags : customTags;
 
     useEffect(() => {
         Animated.parallel([
@@ -65,7 +88,7 @@ const RenewlinkLinko = () => {
                 useNativeDriver: true,
             }).start();
             
-            reLinkoTags.forEach((_, index) => {
+            effectiveTags.forEach((_, index) => {
                 setTimeout(() => {
                     Animated.parallel([
                         Animated.timing(tagItemOpacity, {
@@ -199,6 +222,7 @@ const RenewlinkLinko = () => {
     return (
         <Animated.View 
             style={[
+                shared.container,
                 { 
                     opacity: fadeAnim,
                     transform: [{ translateY: slideUpAnim }]
@@ -206,9 +230,10 @@ const RenewlinkLinko = () => {
             ]}
         >
             <TouchableOpacity 
+                style={[form.backButton, {zIndex: 10}]}
                 onPress={() => navigation.goBack()} 
             >
-                <Image source={returnArr} />
+                <Image source={returnArr} style={form.backIcon} />
             </TouchableOpacity>
 
             <Animated.View 
@@ -225,7 +250,7 @@ const RenewlinkLinko = () => {
                     }
                 ]}
             >
-                <Image source={logo} />
+                <Image source={logo} style={form.logo} />
             </Animated.View>
 
             <Animated.View 
@@ -237,14 +262,17 @@ const RenewlinkLinko = () => {
                                 outputRange: [0, -5],
                                 extrapolate: 'clamp'
                             })
-                        }]
+                        }],
+                        width: '100%'
                     }
                 ]}
             >
                 <TextInput
+                    style={form.input}
                     value={link}
                     onChangeText={setLink}
                     placeholder="Link"
+                    placeholderTextColor='#fff'
                     autoCapitalize="none"
                     keyboardType="url"
                 />
@@ -259,14 +287,17 @@ const RenewlinkLinko = () => {
                                 outputRange: [0, -5],
                                 extrapolate: 'clamp'
                             })
-                        }]
+                        }],
+                        width: '100%'
                     }
                 ]}
             >
                 <TextInput
+                    style={form.input}
                     value={description}
                     onChangeText={setDescription}
                     placeholder="Description"
+                    placeholderTextColor='#fff'
                     multiline
                 />
             </Animated.View>
@@ -274,13 +305,15 @@ const RenewlinkLinko = () => {
             <View>
                 <Animated.View
                     style={{
-                        transform: [{ scale: buttonScale }]
+                        transform: [{ scale: buttonScale }],
+                        width: '100%'
                     }}
                 >
                     <TouchableOpacity 
+                        style={[form.button, {backgroundColor: '#FF1464'}]}
                         onPress={() => setTagsSelectionListVisible(true)}
                     >
-                        <Text>
+                        <Text style={form.buttonText}>
                             {tags.length > 0 ? tags.join(', ') : "Select tags"}
                         </Text>
                     </TouchableOpacity>
@@ -288,66 +321,95 @@ const RenewlinkLinko = () => {
 
                 <Modal
                     visible={tagsSelectionListVisible}
-                    animationType="none"
-                    transparent={false}
+                    animationType="slide"
+                    transparent={true}
                     onRequestClose={() => setTagsSelectionListVisible(false)}
                 >
                     <Animated.View 
                         style={[
+                            modal.layout,
                             {
                                 transform: [{ translateY: modalSlide }]
                             }
                         ]}
                     >
-                        <View>
-                            <Text>Select Tags</Text>
+                        <View style={modal.container}>
+
+                            <Text style={modal.title}>Select Tags</Text>
                             <TouchableOpacity 
                                 onPress={() => setTagsSelectionListVisible(false)}
+                                style={[form.button, {backgroundColor: '#FF1464', marginBottom: 12}]}
                             >
-                                <Text>Done</Text>
+                                <Text style={form.buttonText}>Done</Text>
                             </TouchableOpacity>
-                        </View>
 
-                        <ScrollView contentContainerStyle={styles.tagsList}>
-                            {reLinkoTags.map((tag, id) => (
-                                <Animated.View
-                                    key={id}
-                                    style={{
-                                        opacity: tagItemOpacity,
-                                        transform: [{ scale: tagItemScale }]
-                                    }}
-                                >
-                                    <TouchableOpacity
-                                        onPress={() => handleTagSelection(tag)}
-                                    >
-                                        <Text>{tag}</Text>
-                                        <Checkbox 
-                                            checked={tags.includes(tag)}
-                                            onChange={(checked) => {
-                                                if (checked) {
-                                                    setTags([...tags, tag]);
-                                                } else {
-                                                    setTags(tags.filter(t => t !== tag));
-                                                }
-                                            }}
-                                        />
-                                    </TouchableOpacity>
-                                </Animated.View>
-                            ))}
-                        </ScrollView>
+                            <ScrollView style={{width: '100%'}}>
+                                {
+                                    effectiveTags.length > 0 ? (
+                                        <>
+                                            {effectiveTags.map((tag, id) => (
+                                                <Animated.View
+                                                    key={id}
+                                                    style={{
+                                                        opacity: tagItemOpacity,
+                                                        transform: [{ scale: tagItemScale }]
+                                                    }}
+                                                >
+                                                    <TouchableOpacity
+                                                        style={[modal.button]}
+                                                        onPress={() => handleTagSelection(tag)}
+                                                    >
+                                                        <Text style={modal.text}>{tag}</Text>
+                                                        {/* <Checkbox 
+                                                            checked={tags.includes(tag)}
+                                                            onChange={(checked) => {
+                                                                if (checked) {
+                                                                    setTags([...tags, tag]);
+                                                                } else {
+                                                                    setTags(tags.filter(t => t !== tag));
+                                                                }
+                                                            }}
+                                                        /> */}
+                                                        <View
+                                                            style={[modal.checkboxButton, 
+                                                                tags.includes(tag) && {backgroundColor: 'rgba(255, 0, 191, 0.5)'}
+                                                            ]}
+                                                        >
+                                                            {
+                                                                tags.includes(tag) && (
+                                                                    <Image source={checked} style={modal.checkboxIcon} />
+                                                                )
+                                                            }
+                                                        </View>
+                                                    </TouchableOpacity>
+                                                </Animated.View>
+                                            ))}
+                                        </>
+                                    ) : (
+                                            <Text style={[shared.notFoundText, {color: '#000'}]}>No tags available. Add them in Settings.</Text>
+                                    )
+                                }
+                            </ScrollView>
+                        </View>
                     </Animated.View>
                 </Modal>
             </View>
 
             <Animated.View
-                style={{
-                    transform: [{ scale: buttonScale }]
-                }}
+                style={[
+                    form.button,
+                    {
+                        position: 'absolute',
+                        alignSelf: 'center',
+                        bottom: 50,
+                        transform: [{ scale: buttonScale }]
+                    }
+                ]}
             >
                 <TouchableOpacity 
                     onPress={saveMyNewLinkToStorage}
                 >
-                    <Text>Create Link</Text>
+                    <Text style={form.buttonText}>Create Link</Text>
                 </TouchableOpacity>
             </Animated.View>
         </Animated.View>

@@ -1,11 +1,9 @@
-// add logic to pin links
-
-import React, { useState, useEffect } from 'react';
-import { useNavigation } from "@react-navigation/native";
-import { View, Text, Image, TouchableOpacity, TextInput, ScrollView, Animated, Easing, Linking } from "react-native";
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { View, Text, Image, TouchableOpacity, TextInput, ScrollView, Animated, Easing, Linking, Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { button, link, pin, search } from "../ReConst/reLinkoDecor";
-import WebView from 'react-native-webview';
+import { card, shared } from '../../assets/styles';
 
 const RemylinksLinko = () => {
     const navigation = useNavigation();
@@ -15,42 +13,44 @@ const RemylinksLinko = () => {
     const [pinnedLinks, setPinnedLinks] = useState([]);
     const fadeAnim = new Animated.Value(0);
 
-    // Retrieve links from storage
-    useEffect(() => {
-        const fetchLinks = async () => {
-            try {
-                const storedLinks = await AsyncStorage.getItem('MY_LINKS');
-                const storedPinnedLinks = await AsyncStorage.getItem('PINNED_LINKS');
-                
-                if (storedLinks) {
-                    const parsedLinks = JSON.parse(storedLinks);
-                    setMyLinksStorage(parsedLinks);
-                    setFilteredLinks(parsedLinks);
-                }
-
-                if (storedPinnedLinks) {
-                    setPinnedLinks(JSON.parse(storedPinnedLinks));
-                }
-                
-                // Fade animation
-                Animated.timing(fadeAnim, {
-                    toValue: 1,
-                    duration: 500,
-                    easing: Easing.ease,
-                    useNativeDriver: true,
-                }).start();
-            } catch (error) {
-                console.error('Error fetching links:', error);
+    const fetchLinks = async () => {
+        try {
+            const storedLinks = await AsyncStorage.getItem('MY_LINKS');
+            const storedPinnedLinks = await AsyncStorage.getItem('PINNED_LINKS');
+            
+            if (storedLinks) {
+                const parsedLinks = JSON.parse(storedLinks);
+                setMyLinksStorage(parsedLinks);
+                setFilteredLinks(parsedLinks);
             }
-        };
 
+            if (storedPinnedLinks) {
+                setPinnedLinks(JSON.parse(storedPinnedLinks));
+            }
+            
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 500,
+                easing: Easing.ease,
+                useNativeDriver: true,
+            }).start();
+        } catch (error) {
+            console.error('Error fetching links:', error);
+        }
+    };
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchLinks();
+        }, [])
+    );
+
+    useEffect(() => {
         fetchLinks();
     }, []);
 
-    // Search functionality
     useEffect(() => {
         if (searchQuery.trim() === '') {
-            // Sort with pinned items first
             const sortedLinks = [...myLinksStorage].sort((a, b) => {
                 const aPinned = pinnedLinks.some(link => link.id === a.id);
                 const bPinned = pinnedLinks.some(link => link.id === b.id);
@@ -72,7 +72,6 @@ const RemylinksLinko = () => {
             ));
         });
 
-        // Sort filtered results with pinned items first
         const sortedFiltered = [...filtered].sort((a, b) => {
             const aPinned = pinnedLinks.some(link => link.id === a.id);
             const bPinned = pinnedLinks.some(link => link.id === b.id);
@@ -90,17 +89,14 @@ const RemylinksLinko = () => {
             let updatedPinnedLinks;
             
             if (pinnedLinks.some(link => link.id === linkItem.id)) {
-                // Unpin the link
                 updatedPinnedLinks = pinnedLinks.filter(link => link.id !== linkItem.id);
             } else {
-                // Pin the link
                 updatedPinnedLinks = [...pinnedLinks, linkItem];
             }
             
             await AsyncStorage.setItem('PINNED_LINKS', JSON.stringify(updatedPinnedLinks));
             setPinnedLinks(updatedPinnedLinks);
             
-            // Trigger re-sorting by updating filteredLinks
             setFilteredLinks(prev => [...prev]);
         } catch (error) {
             console.error('Error pinning link:', error);
@@ -108,72 +104,97 @@ const RemylinksLinko = () => {
         }
     };
 
-    const handleLinkPress = async (url) => {
+    const handleLinkPress = async (linkItem) => {
         try {
-            // Check if URL has protocol, add https if missing
-            const formattedUrl = url.startsWith('http') ? url : `https://${url}`;
-            const supported = await Linking.canOpenURL(formattedUrl);
-            
-            if (supported) {
-                await Linking.openURL(formattedUrl);
-            } else {
-                Alert.alert("Error", "Cannot open this URL");
+            if (!linkItem?.link) {
+                Alert.alert("Error", "Invalid link item");
+                return;
             }
+
+            const linkUrl = String(linkItem.link).trim();
+            if (!linkUrl) {
+                Alert.alert("Error", "Empty link URL");
+                return;
+            }
+
+            const formattedUrl = linkUrl.startsWith('http') ? linkUrl : `https://${linkUrl}`;
+            
+            const supported = await Linking.canOpenURL(formattedUrl);
+            if (!supported) {
+                Alert.alert("Error", "Cannot open this URL");
+                return;
+            }
+
+            const now = new Date();
+            const historyEntry = {
+                ...linkItem,
+                link: linkUrl,
+                openDate: now.toLocaleDateString('en-GB').replace(/\//g, '.'),
+                openTime: now.toLocaleTimeString('en-GB', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    hour12: false 
+                }),
+                fullTimestamp: now.toISOString()
+            };
+
+            const existingHistory = await AsyncStorage.getItem('HISTORY_OPENED');
+            const historyArray = existingHistory ? JSON.parse(existingHistory) : [];
+            await AsyncStorage.setItem(
+                'HISTORY_OPENED', 
+                JSON.stringify([historyEntry, ...historyArray])
+            );
+
+            await Linking.openURL(formattedUrl);
+
         } catch (error) {
-            console.error('Error opening URL:', error);
-            Alert.alert("Error", "Failed to open the link");
+            console.error('Error handling link:', error);
+            Alert.alert("Error", "Failed to process the link");
         }
     };
-
-    const renderTags = (tags) => {
-        return tags.map((tag, index) => (
-            <Text key={index}>{tag}</Text>
-        ));
-    };
-
+    
     const linkPinned = (linkID) => {
         return pinnedLinks.some(link => link.id === linkID)
     };
 
     return (
-        <Animated.View style={[{ opacity: fadeAnim }]}>
-            <View>
-                <Text>MY LINKS</Text>
+        <View style={shared.container}>
+            <View style={[shared.row, {marginBottom: 16}]}>
+                <Text style={shared.title}>MY LINKS</Text>
                 <TouchableOpacity 
+                    style={shared.ballButton}
                     onPress={() => navigation.navigate('RenewlinkLinkoF')}
                 >
-                    <Image source={button} />
+                    <Image source={button} style={shared.ballButtonImage} />
                 </TouchableOpacity>
             </View>
 
-            <View>
-                <View>
-                    <TextInput
-                        placeholder="Search links..."
-                        placeholderTextColor="#999"
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                    />
-                    <View>
-                        <Image source={search} />
-                    </View>
+            <View style={{width: '80%', marginBottom: 30}}>
+                <TextInput
+                    style={shared.searchInput}
+                    placeholder="Search links..."
+                    placeholderTextColor="#999"
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                />
+                <View style={{position: 'absolute', top: 5, right: 7}}>
+                    <Image source={search} style={shared.searchIcon} />
                 </View>
             </View>
 
             {filteredLinks.length > 0 ? (
-                <ScrollView>
+                <ScrollView style={{width: '100%'}}>
                     {filteredLinks.map((linkItem, idx) => (
                         <TouchableOpacity 
                             key={idx} 
-                            onPress={() => handleLinkPress(linkItem.link)}
+                            style={card.container}
+                            onPress={() => handleLinkPress(linkItem)}
                             onLongPress={() => handlePinLink(linkItem)}
                         >
-                            <Image source={link} />
+                            <Image source={link} style={card.icon} />
                             <View>
-                                <Text>{linkItem.description}</Text>
-                                <View>
-                                    {renderTags(linkItem.tags)}
-                                </View>
+                                <Text style={card.title}>{linkItem.description}</Text>
+                                <Text style={card.text}>{linkItem.tags.join(', ')}</Text>
                             </View>
                             {
                                 linkPinned(linkItem.id) && (
@@ -187,13 +208,14 @@ const RemylinksLinko = () => {
             ) : (
                 <View>
                     {searchQuery ? (
-                        <Text>No links found for "{searchQuery}"</Text>
+                        <Text style={shared.notFoundText}>No links found for "{searchQuery}"</Text>
                     ) : (
-                        <Text>You do not have any links yet</Text>
+                        <Text style={shared.notFoundText}>You do not have any links yet</Text>
                     )}
                 </View>
             )}
-        </Animated.View>
+            
+        </View>
     );
 };
 

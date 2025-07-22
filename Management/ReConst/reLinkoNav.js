@@ -1,4 +1,4 @@
-import { gropus, history, links, settings } from "./reLinkoDecor";
+import { groups, history, links, settings } from "./reLinkoDecor";
 
 const reLinkoNav = [
     {
@@ -7,7 +7,7 @@ const reLinkoNav = [
     },
     {
         dis: 'RecollectionsLinkoF',
-        image: gropus
+        image: groups
     },
     {
         dis: 'ReremindersLinkoF',
