@@ -19,7 +19,7 @@ const Background = ({ dis, nav }) => {
                                 alignItems: 'center', 
                                 justifyContent: 'center', 
                                 bottom: 37,
-                                zIndex: 10
+                                zIndex: 12
                             }}
                         >
                             <NavigationPanel />
